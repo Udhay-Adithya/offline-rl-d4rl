@@ -13,10 +13,9 @@ Reference implementation of CQL, IQL, and a BC baseline for D4RL locomotion task
 ## Setup
 
 ```bash
-python -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+uv venv
+source .venv/bin/activate
+uv sync
 ```
 
 If D4RL installation is problematic, install from source:
@@ -24,7 +23,7 @@ If D4RL installation is problematic, install from source:
 ```bash
 git clone https://github.com/Farama-Foundation/D4RL.git
 cd D4RL
-pip install -e .
+uv pip install -e .
 cd ..
 ```
 
