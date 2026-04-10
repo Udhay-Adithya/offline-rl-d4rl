@@ -1,0 +1,19 @@
+algo: iql
+variant: medium
+seed: 0
+total_steps: 1000000
+batch_size: 256
+eval_freq: 10000
+eval_episodes: 10
+save_freq: 100000
+output_dir: ./results/ant
+device: auto
+
+lr: 0.0003
+gamma: 0.99
+tau: 0.005
+hidden_dims: [256, 256]
+
+# Ant uses a higher beta for sharper advantage weighting.
+iql_beta: 10.0
+iql_expectile: 0.7
