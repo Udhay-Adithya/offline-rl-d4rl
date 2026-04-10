@@ -12,30 +12,29 @@ offline_rl_d4rl/
 │   ├── bc.py                # Behavior Cloning
 │   ├── cql.py               # Conservative Q-Learning
 │   ├── iql.py               # Implicit Q-Learning
-│   ├── dataset.py           # Base D4RL dataset loader
+│   ├── dataset.py           # Base dataset loader (reads local HDF5 files)
 │   ├── evaluation.py        # Policy evaluation & normalized scoring
+│   ├── render.py            # MuJoCo viewer rendering
 │   └── logger.py            # TensorBoard + JSON logger
 │
-├── halfcheetah/             # HalfCheetah-v2 (state_dim=17, action_dim=6)
+├── data/                    # Place downloaded HDF5 dataset files here
+│
+├── halfcheetah/             # HalfCheetah (state_dim=17, action_dim=6)
 │   ├── env_config.py        # Environment constants, tuned hyperparams, reference scores
 │   ├── dataset.py           # HalfCheetah-specific dataset loader with validation
 │   ├── train.py             # Training entrypoint
 │   ├── evaluate.py          # Multi-seed evaluation entrypoint
+│   ├── render.py            # MuJoCo viewer rendering
 │   └── configs/             # YAML presets (bc.yaml, cql.yaml, iql.yaml)
 │
-├── hopper/                  # Hopper-v2 (state_dim=11, action_dim=3)
-│   ├── env_config.py
-│   ├── dataset.py
-│   ├── train.py
-│   ├── evaluate.py
-│   └── configs/
+├── hopper/                  # Hopper (state_dim=11, action_dim=3)
+│   ├── ...                  # Same structure as halfcheetah/
 │
-├── walker2d/                # Walker2d-v2 (state_dim=17, action_dim=6)
-│   ├── env_config.py
-│   ├── dataset.py
-│   ├── train.py
-│   ├── evaluate.py
-│   └── configs/
+├── walker2d/                # Walker2d (state_dim=17, action_dim=6)
+│   ├── ...
+│
+├── ant/                     # Ant (state_dim=111, action_dim=8)
+│   ├── ...
 │
 ├── pyproject.toml
 └── README.md
@@ -49,19 +48,89 @@ source .venv/bin/activate
 uv sync
 ```
 
-If D4RL installation is problematic, install from source:
+## Downloading Datasets
+
+This project loads D4RL datasets from local HDF5 files. **No `d4rl` or `mujoco-py`
+package is required.** Download the datasets you need and place them in the `data/`
+directory at the project root.
+
+### Download Links
+
+Each environment has 5 dataset variants. Download the ones you need:
+
+**HalfCheetah:**
+
+| Variant       | File                               | Download                                                                                     |
+|--------------|-------------------------------------|----------------------------------------------------------------------------------------------|
+| random       | `halfcheetah-random-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/halfcheetah_random-v2.hdf5>  |
+| medium       | `halfcheetah-medium-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/halfcheetah_medium-v2.hdf5>  |
+| medium-replay| `halfcheetah-medium-replay-v2.hdf5`| <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/halfcheetah_medium-replay-v2.hdf5> |
+| medium-expert| `halfcheetah-medium-expert-v2.hdf5`| <https://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/halfcheetah_medium_expert-v2.hdf5> |
+| expert       | `halfcheetah-expert-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/halfcheetah_expert-v2.hdf5>  |
+
+**Hopper:**
+
+| Variant       | File                         | Download                                                                              |
+|--------------|------------------------------|---------------------------------------------------------------------------------------|
+| random       | `hopper-random-v2.hdf5`      | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/hopper_random-v2.hdf5> |
+| medium       | `hopper-medium-v2.hdf5`      | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/hopper_medium-v2.hdf5> |
+| medium-replay| `hopper-medium-replay-v2.hdf5`| <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/hopper_medium-replay-v2.hdf5> |
+| medium-expert| `hopper-medium-expert-v2.hdf5`| <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/hopper_medium-expert-v2.hdf5> |
+| expert       | `hopper-expert-v2.hdf5`      | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/hopper_expert-v2.hdf5> |
+
+**Walker2d:**
+
+| Variant       | File                             | Download                                                                                     |
+|--------------|----------------------------------|----------------------------------------------------------------------------------------------|
+| random       | `walker2d-random-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/walker2d_random-v2.hdf5>     |
+| medium       | `walker2d-medium-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/walker2d_medium-v2.hdf5>     |
+| medium-replay| `walker2d-medium-replay-v2.hdf5`| <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/walker2d_medium-replay-v2.hdf5> |
+| medium-expert| `walker2d-medium-expert-v2.hdf5`| <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/walker2d_medium-expert-v2.hdf5> |
+| expert       | `walker2d-expert-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/walker2d_expert-v2.hdf5>     |
+
+**Ant:**
+
+| Variant       | File                       | Download                                                                              |
+|--------------|----------------------------|---------------------------------------------------------------------------------------|
+| random       | `ant-random-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/ant_random-v2.hdf5>   |
+| medium       | `ant-medium-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/ant_medium-v2.hdf5>   |
+| medium-replay| `ant-medium-replay-v2.hdf5`| <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/ant_medium-replay-v2.hdf5> |
+| medium-expert| `ant-medium-expert-v2.hdf5`| <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/ant_medium-expert-v2.hdf5> |
+| expert       | `ant-expert-v2.hdf5`       | <http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/ant_expert-v2.hdf5>   |
+
+### Quick download example (curl)
 
 ```bash
-git clone https://github.com/Farama-Foundation/D4RL.git
-cd D4RL
-uv pip install -e .
-cd ..
+# Download HalfCheetah medium-expert dataset (~130 MB)
+curl -L -o data/halfcheetah-medium-expert-v2.hdf5 \
+  https://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/halfcheetah_medium_expert-v2.hdf5
+
+# Download Hopper medium dataset (~45 MB)
+curl -L -o data/hopper-medium-v2.hdf5 \
+  http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco_v2/hopper_medium-v2.hdf5
 ```
+
+```
+
+### Where to place files
+
+```
+offline_rl_d4rl/
+└── data/
+    ├── halfcheetah-medium-v2.hdf5
+    ├── halfcheetah-medium-expert-v2.hdf5
+    ├── hopper-medium-v2.hdf5
+    ├── walker2d-medium-v2.hdf5
+    ├── ant-medium-v2.hdf5
+    └── ...
+```
+
+The filename must match the D4RL environment name exactly (e.g. `halfcheetah-medium-v2.hdf5`).
 
 ## Training (per-environment)
 
 Each environment has its own training script that uses `--variant` to select
-the D4RL dataset (random, medium, medium-replay, medium-expert, expert):
+the dataset (random, medium, medium-replay, medium-expert, expert):
 
 ```bash
 # HalfCheetah
@@ -75,6 +144,10 @@ python -m hopper.train --algo iql --variant medium-replay --seed 0
 # Walker2d
 python -m walker2d.train --algo cql --variant medium --seed 0
 python -m walker2d.train --algo bc --variant expert --total_steps 500000
+
+# Ant
+python -m ant.train --algo cql --variant medium --seed 0
+python -m ant.train --algo iql --variant medium-expert --seed 42
 ```
 
 Algorithm-specific hyperparameters can be overridden via flags:
@@ -96,6 +169,20 @@ python -m hopper.evaluate --algo iql --variant medium-expert \
 
 python -m walker2d.evaluate --algo bc --variant expert \
     --model_path ./results/walker2d/bc_expert_seed0/best_model.pt
+
+python -m ant.evaluate --algo cql --variant medium \
+    --model_path ./results/ant/cql_medium_seed0/best_model.pt
+```
+
+## Rendering (MuJoCo viewer)
+
+```bash
+python -m halfcheetah.render --algo cql --variant medium \
+    --model_path ./results/halfcheetah/cql_medium_seed0/best_model.pt
+
+python -m ant.render --algo iql --variant medium-expert \
+    --model_path ./results/ant/iql_medium-expert_seed0/best_model.pt \
+    --n_episodes 3 --slow 1.5
 ```
 
 ## Environment Details
@@ -105,6 +192,7 @@ python -m walker2d.evaluate --algo bc --variant expert \
 | HalfCheetah | 17        | 6          | -280.2            | 12135.0           |
 | Hopper      | 11        | 3          | -20.3             | 3234.3            |
 | Walker2d    | 17        | 6          | 1.6               | 4592.3            |
+| Ant         | 111       | 8          | -325.6            | 3879.7            |
 
 Each `env_config.py` contains detailed observation/action descriptions,
 tuned hyperparameters per algorithm, and published reference scores for
@@ -112,10 +200,8 @@ sanity-checking your runs.
 
 ## Notes
 
+- **No `d4rl` or `mujoco-py` package needed.** Datasets are loaded from local HDF5 files.
 - State normalization is enabled by default for training and evaluation.
 - `--device auto` picks CUDA if available, otherwise CPU.
 - Metrics are logged to TensorBoard-compatible event files and to JSON.
 - Results are saved under `./results/<env_name>/<algo>_<variant>_seed<N>/`.
-- The old top-level `train.py`, `evaluate.py`, `models/`, `utils/`, and `configs/`
-  directories are the original monolithic code and can be removed once you
-  confirm the new per-environment modules work correctly.

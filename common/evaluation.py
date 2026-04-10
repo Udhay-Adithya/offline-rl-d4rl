@@ -1,16 +1,19 @@
-import gym
-import d4rl  # noqa: F401 - needed to register D4RL environments
+import gymnasium as gym
 import numpy as np
 
 
-def _reset_env(env, seed=None):
-    try:
-        result = env.reset(seed=seed)
-    except TypeError:
-        if seed is not None and hasattr(env, "seed"):
-            env.seed(seed)
-        result = env.reset()
+# D4RL reference scores for normalized score computation.
+# normalized_score = (raw_return - random_score) / (expert_score - random_score) * 100
+_REF_SCORES = {
+    "halfcheetah": {"random": -280.2, "expert": 12135.0},
+    "hopper": {"random": -20.3, "expert": 3234.3},
+    "walker2d": {"random": 1.6, "expert": 4592.3},
+    "ant": {"random": -325.6, "expert": 3879.7},
+}
 
+
+def _reset_env(env, seed=None):
+    result = env.reset(seed=seed)
     if isinstance(result, tuple):
         return result[0]
     return result
@@ -27,6 +30,20 @@ def _step_env(env, action):
     return next_state, reward, done
 
 
+def _d4rl_name_to_gym_env(env_name):
+    """Map a D4RL dataset name like 'halfcheetah-medium-v2' to a Gymnasium env ID."""
+    _GYM_ENV_MAP = {
+        "halfcheetah": "HalfCheetah-v4",
+        "hopper": "Hopper-v4",
+        "walker2d": "Walker2d-v4",
+        "ant": "Ant-v4",
+    }
+    base = env_name.split("-")[0]
+    if base not in _GYM_ENV_MAP:
+        raise ValueError(f"Unknown environment base '{base}' from '{env_name}'")
+    return _GYM_ENV_MAP[base]
+
+
 def evaluate_policy(
     policy,
     env_name,
@@ -37,7 +54,8 @@ def evaluate_policy(
     state_std=None,
 ):
     """Evaluate a policy and return episode-level statistics."""
-    env = gym.make(env_name)
+    gym_env_id = _d4rl_name_to_gym_env(env_name)
+    env = gym.make(gym_env_id)
 
     episode_returns = []
     episode_lengths = []
@@ -72,16 +90,21 @@ def evaluate_policy(
 
 
 def get_normalized_score(env_name, returns):
-    env = gym.make(env_name)
+    """Compute D4RL normalized score: (return - random) / (expert - random) * 100."""
+    base = env_name.split("-")[0]
+    if base not in _REF_SCORES:
+        raise ValueError(
+            f"No reference scores for '{base}'. "
+            f"Known environments: {list(_REF_SCORES.keys())}"
+        )
+    random_score = _REF_SCORES[base]["random"]
+    expert_score = _REF_SCORES[base]["expert"]
+    score_range = expert_score - random_score
 
     if isinstance(returns, (list, np.ndarray)):
-        normalized = [env.get_normalized_score(ret) * 100 for ret in returns]
-        env.close()
-        return np.array(normalized)
+        return np.array([(ret - random_score) / score_range * 100 for ret in returns])
 
-    score = env.get_normalized_score(returns) * 100
-    env.close()
-    return score
+    return (returns - random_score) / score_range * 100
 
 
 def evaluate_and_get_normalized_score(

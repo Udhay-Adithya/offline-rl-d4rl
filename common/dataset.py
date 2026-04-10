@@ -1,20 +1,32 @@
-import gym
-import d4rl  # noqa: F401 - needed to register D4RL environments
+import os
+
+import h5py
 import numpy as np
 import torch
 
+# Default directory for downloaded D4RL HDF5 files.
+DEFAULT_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+
 
 class D4RLDataset:
-    """Dataset loader and sampler for D4RL environments."""
+    """Dataset loader and sampler for D4RL HDF5 files stored locally."""
 
     def __init__(self, env_name, normalize_states=True, normalize_rewards=False):
-        self.env = gym.make(env_name)
-        self.dataset = self.env.get_dataset()
+        hdf5_path = self._find_hdf5(env_name)
+        self.dataset = self._load_hdf5(hdf5_path)
 
         self.states = self.dataset["observations"].astype(np.float32)
         self.actions = self.dataset["actions"].astype(np.float32)
         self.rewards = self.dataset["rewards"].astype(np.float32)
-        self.next_states = self.dataset["next_observations"].astype(np.float32)
+
+        # Some D4RL files include next_observations; compute if missing.
+        if "next_observations" in self.dataset:
+            self.next_states = self.dataset["next_observations"].astype(np.float32)
+        else:
+            self.next_states = np.concatenate(
+                [self.states[1:], self.states[-1:]], axis=0
+            ).astype(np.float32)
+
         self.dones = self.dataset["terminals"].astype(np.float32)
 
         if "timeouts" in self.dataset:
@@ -43,11 +55,34 @@ class D4RLDataset:
             self.reward_std = self.rewards.std() + 1e-6
             self.rewards = (self.rewards - self.reward_mean) / self.reward_std
 
-        print(f"Loaded {env_name} dataset:")
+        print(f"Loaded {env_name} dataset from {hdf5_path}:")
         print(f"  Size: {self.size}")
         print(f"  State dim: {self.states.shape[1]}")
         print(f"  Action dim: {self.actions.shape[1]}")
         print(f"  Average reward: {self.rewards.mean():.3f}")
+
+    @staticmethod
+    def _find_hdf5(env_name):
+        """Locate the HDF5 file for env_name in the data/ directory."""
+        filename = f"{env_name}.hdf5"
+        path = os.path.join(DEFAULT_DATA_DIR, filename)
+        if os.path.isfile(path):
+            return path
+        raise FileNotFoundError(
+            f"Dataset file not found: {path}\n"
+            f"Download it manually and place it in the data/ directory.\n"
+            f"See README.md for download links."
+        )
+
+    @staticmethod
+    def _load_hdf5(path):
+        """Read all datasets from an HDF5 file into a dict of numpy arrays."""
+        data = {}
+        with h5py.File(path, "r") as f:
+            for key in f.keys():
+                if isinstance(f[key], h5py.Dataset):
+                    data[key] = f[key][:]
+        return data
 
     def _normalize_states(self, states):
         return (states - self.state_mean) / self.state_std

@@ -7,19 +7,14 @@ Requires a display (will not work in headless/SSH without X-forwarding).
 
 import time
 
-import gym
-import d4rl  # noqa: F401 - needed to register D4RL environments
+import gymnasium as gym
 import numpy as np
+
+from common.evaluation import _d4rl_name_to_gym_env
 
 
 def _reset_env(env, seed=None):
-    try:
-        result = env.reset(seed=seed)
-    except TypeError:
-        if seed is not None and hasattr(env, "seed"):
-            env.seed(seed)
-        result = env.reset()
-
+    result = env.reset(seed=seed)
     if isinstance(result, tuple):
         return result[0]
     return result
@@ -59,7 +54,8 @@ def render_policy(
         state_std: Std used for state normalization.
         slow_factor: Multiplier for frame delay (>1 = slower playback).
     """
-    env = gym.make(env_name)
+    gym_env_id = _d4rl_name_to_gym_env(env_name)
+    env = gym.make(gym_env_id, render_mode="human")
 
     # MuJoCo timestep is typically 0.002s with frameskip of 5 → 0.01s per step.
     dt = env.unwrapped.dt if hasattr(env.unwrapped, "dt") else 0.02
